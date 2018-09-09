@@ -1,6 +1,9 @@
 {
   "name": "radisxdlt-ts-lite",
   "version": "0.0.1",
+  "scripts": {
+    "testrun": "node src/scripts/testConnection.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/BernhardFuchs/radixdlt-ts-lite"

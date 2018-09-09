@@ -5,6 +5,7 @@ import Data = WebSocket.Data;
 import { RadixNs } from './models/radix-namespace';
 import Registration = RadixNs.Registration;
 import Response = RadixNs.Response;
+import Login = RadixNs.Login;
 
 class Messages extends Subject<any> {
   private items: Observer<any>[] = [];
@@ -37,6 +38,9 @@ export class Connection {
   private message: Messages = new Messages();
 
   private tokenValue: string = '';
+  public getTokenValue () {
+    return this.tokenValue;
+  }
 
   private getAddress = new Subject();
   private getBalance = new Subject();
@@ -46,16 +50,33 @@ export class Connection {
   private getMessages = new Subject();
   private sendApplicationMessage = new Subject();
   private getApplicationMessages = new Subject();
-  
+
   constructor () {
-    this.socket = new WebSocket('localhost:54345', 'ws');
+    this.socket = new WebSocket('ws://localhost:54345');
   }
   
-  public register(registration: Registration): Promise<any> {
-    return new Promise((resolve, reject) => {
+  public register(registration: Registration): Promise<void> {
+    return new Promise<any>((resolve, reject) => {
       this.socket.onopen = () => this.handleOpen(registration.data, resolve, reject);
-      this.socket.onmessage = (evt) => this.handleResponse(evt.data);
+      this.socket.onmessage = (evt: any) => this.handleResponse(evt.data);
+      this.socket.onerror = (error: any) => reject(`WebSocket Error: ${JSON.stringify(error)}`);
+      this.socket.onclose = () => this.handleClose();
     });
+  }
+
+  public connect(login: Login): Promise<void> {
+    this.tokenValue = login.token;
+    return new Promise<any>((resolve, reject) => {
+      this.socket.onopen = () => this.handleOpen(login.data, resolve, reject);
+      this.socket.onmessage = (evt: any) => this.handleResponse(evt.data);
+      this.socket.onerror = (error: any) => reject(`WebSocket Error: ${JSON.stringify(error)}`);
+      this.socket.onclose = () => this.handleClose();
+    });
+  }
+
+  private handleClose(): void {
+    this.token.unsubscribe();
+    this.message.unsubscribe();
   }
 
   private handleOpen(registrationData: string, resolve: any, reject: any) {
@@ -74,8 +95,9 @@ export class Connection {
     );
   }
 
-  handleResponse(resData: Data): any {
+  private handleResponse(resData: Data): any {
     const parsedResponse: Response = JSON.parse(resData.toString());
+    console.log('####parsedResponse: ', parsedResponse);
     if (parsedResponse.hasOwnProperty('result') || parsedResponse.hasOwnProperty('params')) {
       this.getResponse(parsedResponse);
     } else {
@@ -83,7 +105,7 @@ export class Connection {
     }
   }
 
-  getResponse(response: Response) {
+  private getResponse(response: Response) {
     switch (response.id) {
       case 0: // register
         this.token.next(response.result.token);
@@ -130,12 +152,13 @@ export class Connection {
         break;
     }
   }
-  getError(response: Response) {
+  private getError(response: Response) {
     switch (response.id) {
       case 0: // register
         this.token.error(response.error);
         break;
       case 1: // getAddress
+        console.log('#### Address error');
         this.getAddress.error(response.error);
         break;
       case 2: // getBalance

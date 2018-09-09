@@ -24,4 +24,20 @@ export namespace RadixNs {
     }
   }
 
+  export class Login {
+    data: string;
+    token: string;
+    constructor (token: string) {
+      this.token = token;
+      this.data = JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'ping',
+        params: {
+          'token': token
+        },
+        id: 9
+      });
+    }
+  }
+
 }
